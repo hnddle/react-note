@@ -1,0 +1,314 @@
+//deps 변화시 실행 방법
+useEffect(() => {
+	실행 내용
+}, [deps])
+
+//deps 변화시 실행, 다만 렌더링을 먼저한 뒤 계산하여 혹시나 컴포넌트가 깜빡이지 않게 (로딩으로) 해줌,
+//가능하면 useEffect 사용하고 화면 깜빡일 때 사용
+useLayoutEffect(() => {
+	실행 내용
+}, [deps])
+//----------------------------------------------------------------------------------------------------------------------------------
+//컴포넌트 렌더링시 최초 1번 실행 방법
+useEffect(() => {
+	실행 내용
+}, [])
+//----------------------------------------------------------------------------------------------------------------------------------
+// deps 값이 변화하면 실행하도록 하여 컴포넌트 리렌더링 최적화 가능
+// (기본 상태에서는 부모 컴포넌트가 렌더링되면 자식 컴포넌트도 렌더링 되기 때문에,
+//  useMemo로 최적화를 해줘야, 딱 필요한 값이 변화했을 때만 해당 컴포넌트가 리렌더링 되게 해줄 수 있음)
+useMemo(() => {
+	return 컴포넌트, 함수 등
+}, [deps])
+//----------------------------------------------------------------------------------------------------------------------------------
+//React 컴포넌트 렌더링 시점, 횟수 등 확인 방법 (최적화)
+//react-dev-tools 확장 프로그램 설치 후, 개발자 콘솔(F12) -> components -> 톱니바퀴 -> Highlight updates when components render 체크 하면 컴포넌트 렌더링 확인 가능
+//----------------------------------------------------------------------------------------------------------------------------------
+//리액트의 setState와 axios 등은 비동기이다.
+//----------------------------------------------------------------------------------------------------------------------------------
+// setState 비동기성으로 인해 생기는 문제 해결 방법
+ - https://junior-datalist.tistory.com/67
+ 
+ ex) 
+ //number가 1일때
+setNumber(number + 1);
+setNumber(number + 1);
+setNumber(number + 1);
+setNumber(number + 1);
+
+//이런식으로 빠르게 네번 호출이 된다면
+//number가 4가 안나오고 2가 나올 수 있음
+
+//이는 state의 object assign 특성 때문인데, 
+아래와 같이 함수형으로 값을 전달하면
+//함수 !== object 이기 때문에 assign이 작동하지 않고, 모든 함수가 제대로 동기적으로 큐에 들어가서 작동한다.
+setNumber(number => number + 1);
+
+//----------------------------------------------------------------------------------------------------------------------------------
+css in js는 (styled-component 등) 렌더링이 다시 이뤄질 경우, 
+스타일이 js 코드안에 포함되어 있어 스타일을 다시 전달/로딩하기 때문에
+동적인 이벤트가 많은 페이지에서는 렌더링이 느릴 수 있음
+
+반면 css in css (그냥 css파일, sass, scss 등)는 최초에 css파일을 받아와서 스타일을 적용시켜놓기 때문에
+렌더링이 다시 일어나도 스타일이 다시 로딩되지 않음.
+
+물론 styled-component도 컴포넌트 작성이 빠르고, 별도로 css를 찾아서 수정하고 관리하지 않아도 되기 때문에
+개발이 빨라진다는 장점이 있긴 함
+//----------------------------------------------------------------------------------------------------------------------------------
+컴포넌트는 가능한 데이터 단위로 쪼개놔야 나중에 렌더링 최적화하기 좋음
+//----------------------------------------------------------------------------------------------------------------------------------
+useMemo도 값을 비교할 때 비용이 들어가기 때문에, 항상 사용하는 것이 좋지 않음
+하지만 대부분의 상황에서는 리렌더링이 비용이 훨씬 크기 때문에
+렌더링이 되는 컴포넌트들은 useMemo로 감싸두는 것이 좋을 가능성이 높음
+//----------------------------------------------------------------------------------------------------------------------------------
+//스크롤 항상 아래로 가게 하기
+const scrollRef = useRef();
+
+ <div ref= {scrollRef}>   <-- 컴포넌트에 넣기
+ 
+ //특정 이벤트 발생시 (업데이트 등)
+if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+//----------------------------------------------------------------------------------------------------------------------------------
+//주기적으로 반복하는 기능 (1000 = 1초)
+//useInterval 정의 (누군가 만들어둔 것인데 거의 국룰
+import React, { useState, useEffect, useRef } from 'react';
+
+function useInterval(callback , delay) {
+    const savedCallback = useRef();
+
+    // Remember the latest callback.
+    useEffect(() => {
+      savedCallback.current = callback;
+    }, [callback]);
+  
+    // Set up the interval.
+    useEffect(() => {
+      function tick() {
+        savedCallback.current();
+      }
+      if (delay !== null) {
+        let id = setInterval(tick, delay);
+        return () => clearInterval(id);
+      }
+    }, [delay]);
+}
+
+export default useInterval;
+
+//사용법
+useInterval(() => {
+    //기능
+  }, 1000)
+//----------------------------------------------------------------------------------------------------------------------------------
+//이전 state값과 비교가 필요할 때 prevState를 사용하면 편하다
+//하나의 패턴 (원래 리액트도 기본적으로 prevState가 있긴 함)
+import { useEffect, useRef } from "react";
+
+function usePrevState(state) {
+    const ref = useRef(state);
+
+    useEffect(() => {
+        ref.current = state;
+    }, [state]);
+
+    return ref.current;
+}
+
+export default usePrevState;
+//사용법
+const prevState = usePrevState(어떤 state값);
+
+//----------------------------------------------------------------------------------------------------------------------------------
+//일정 딜레이 후 실행되는 기능 (1000 = 1초)
+const timerId = setTimeout(() => {기능}, 1000)
+//타임아웃 삭제/멈추는 법
+clearTimeout(timerId)
+//----------------------------------------------------------------------------------------------------------------------------------
+Array 관련해서 가능하면
+.map()
+.filter()
+.sort()
+.flat()
+.includes()
+.find()
+등을 숙지해두고 로직 짤때 사용하는 것이 좋음 (코드 재사용성, 길이 측면에서 효율적)
+//----------------------------------------------------------------------------------------------------------------------------------
+setState 뒤에 새로운 데이터 붙히는 법 (스프레드 연산자 버전)
+setData([...data, newData])
+//----------------------------------------------------------------------------------------------------------------------------------
+//자바스크립트에서 타임스탬프 서버와 맞추는법 (동기화)
+https://snailvoyager.tistory.com/m/93?category=406494
+
+const currentTime = new Date();
+const gabTime = currentTime.getTime() - (서버 타임스탬프);
+setNowTime(currentTime.getTime() - gabTime);
+
+//이후
+useInterval(() => {
+        if(nowTime) {
+            setNowTime(nowTime + 1);
+        }
+    }, 1000);
+//----------------------------------------------------------------------------------------------------------------------------------
+웹소켓 사용법
+const socket = io.connect("URL 등 주소:포트", {
+  transports: ["websocket"],
+  autoConnect: false,
+});
+
+const [ASocket, setASocket] = useState();
+
+socket.connect();
+        socket.on("무언가 값" , (data)=>{
+          //console.log(data)
+          setASocket(data)
+        })
+//소켓 데이터 파싱
+const socketData = ASocket && JSON.parse(ASocket);
+//나중에 소켓 끊는 법
+socket.disconnect();
+//----------------------------------------------------------------------------------------------------------------------------------
+//url 뒤에 path 끊는법
+locations.pathname.split('/');
+//----------------------------------------------------------------------------------------------------------------------------------
+//시간 처리할때 moment를 쓰면 편함
+const date = moment(new Date()).format("L");
+const time = moment(new Date()).format("HH:mm");
+
+//이런식으로 비교 가능
+(time > "23:00")
+//----------------------------------------------------------------------------------------------------------------------------------
+// 조건 ? true이면 : false이면
+//----------------------------------------------------------------------------------------------------------------------------------
+//겹쳐있는 컴포넌트 클릭시 맨 위에 있는 컴포넌트만 실행되게 하려면
+//예를들어 onClick인 경우 아래처럼 e.stopPropagation을 추가해줘야 한다.
+onClick={(e) => e.stopPropagation()}
+
+//물론 겹쳐서 안보이는 컴포넌트는 css에서 z-index 수정 필요
+//----------------------------------------------------------------------------------------------------------------------------------
+//드래그 이동 등이 필요한 컴포넌트는 react-draggable의 Draggable를 쓰면 편함
+//----------------------------------------------------------------------------------------------------------------------------------
+//페이지 등 이동할 때
+const navigate = useNavigate();
+navigate(`/경로/경로`)
+
+//----------------------------------------------------------------------------------------------------------------------------------
+//달력 컴포넌트
+import Calendar from "react-calendar";
+//----------------------------------------------------------------------------------------------------------------------------------
+//모달 컴포넌트
+import Modal from "react-modal";
+//----------------------------------------------------------------------------------------------------------------------------------
+//쿠키 컴포넌트
+//Provider 설정 하는 법
+import { CookiesProvider } from "react-cookie";
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
+    <CookiesProvider>
+        <App />
+    </CookiesProvider>
+);
+
+//따로 함수 정의해서 사용해도 됨
+import {Cookies} from 'react-cookie';
+
+const cookies = new Cookies()
+
+export const setCookie = (name, value, option) => {
+    return cookies.set(name, value, {...option})
+}
+
+export const getCookie = (name) => {
+    return cookies.get(name)
+}
+
+//또다른 방법 ***********************************
+import Cookies from "universal-cookie";
+
+const cookies = new Cookies()
+//쿠기 삭제하기
+cookies.remove("특정 쿠키값");
+
+//쿠키 설정하기
+let expires = new Date();
+expires.setSeconds(expires.getSeconds() + timePlus);
+
+setCookie('쿠키값' , 어떤값 , {
+  path:"/",
+  expires,
+})
+//쿠키 가져오기
+getCookie('특정 쿠키값')
+//----------------------------------------------------------------------------------------------------------------------------------
+//기타 컴포넌트
+import { ToastContainer, toast } from "react-toastify";
+import AnimatedNumbers from "react-animated-numbers";
+import reactStringReplace from 'react-string-replace';
+import { throttle, debounce } from "lodash";
+import CircularProgress from "@mui/material/CircularProgress";
+import {decode} from 'html-entities';
+import { AiOutlineClose } from "react-icons/ai";
+//----------------------------------------------------------------------------------------------------------------------------------
+//git LFS 쓰는법 (깃허브 50mb인가 100mb 이상 되는 파일 올릴때 쓰는 방법)
+https://newsight.tistory.com/330
+//----------------------------------------------------------------------------------------------------------------------------------
+//git ignore가 적용되지 않을 때
+https://jojoldu.tistory.com/307
+//----------------------------------------------------------------------------------------------------------------------------------
+//전역 변수 관리할 때 프로젝트 폴더 내에 env를 쓰면 편함
+//.env.production
+//.env.development
+//파일 생성 후 아래와 같이 정의
+SOME_VALUE = '값'
+
+//사용할 때는
+process.env.SOME_VALUE 로 사용
+
+//----------------------------------------------------------------------------------------------------------------------------------
+// Axios 등 사용
+export const 함수 = async (setState, 파라미터2) => {
+    return await axios
+        .get(url값,
+            {
+			//옵션, 필요시 사용
+			withCredentials: true,
+			headers: {
+                    Authorization: getCookie("어떤 쿠키값"),
+                },
+            }
+        )
+        .then((res) => {
+            if (res.data.status_code === 200) {
+                setState(res.data);
+            } else if (res.status === 400) {
+                //alert(res.data.data.msg)
+            } else if (res.data.status_code === 400) {
+                // alert(res.data.msg)
+            }
+        })
+        .catch((err) => console.log(err + "1"));
+};
+
+//----------------------------------------------------------------------------------------------------------------------------------
+//React 패턴 중 Container-Presenter 패턴이 있음 (출력만 하는 컴포넌트, 데이터 처리를 하는 컴포넌트 분리)
+https://velog.io/@dolarge/React-Container-Presenter-%ED%8C%A8%ED%84%B4
+
+
+//Atomic 디자인에 관한 것
+https://velog.io/@moaikang/Atomic-Design%EC%9D%84-%EC%9D%91%EC%9A%A9%ED%95%B4-React-%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8-%EA%B5%AC%EC%A1%B0%EB%A5%BC-%EC%84%A4%EA%B3%84%ED%95%98%EA%B3%A0-%EA%B8%B0%EC%88%A0-%EC%8A%A4%ED%83%9D%EC%9D%84-%EA%B2%B0%EC%A0%95%ED%95%9C-%EA%B2%BD%ED%97%98
+
+// 프론트엔드 아키텍처의 가장 최근 트렌드는? (2022.08.26 작성글)
+// 정말 이해하기 쉽게 잘 설명된 글 **************************************
+https://yozm.wishket.com/magazine/detail/1663/?fbclid=IwAR2MdbAINfStdjd2qlnk4x9QhUrBuyDsI2ZpfgBekeGWY-tlLlQZDV2AAD4&mibextid=O6v4PX
+
+
+//----------------------------------------------------------------------------------------------------------------------------------
+//리렌더링 관련 글 (위의 useMemo와 관련 있음)
+//리액트의 렌더링은 어떻게 일어나는가?
+https://yceffort.kr/2022/04/deep-dive-in-react-rendering
+
+//무지성 React - 리렌더링 막고 싶어요... (무지성 실험 글이기에 주의)
+https://velog.io/@dlwlrma/%EB%AC%B4%EC%A7%80%EC%84%B1-React-%EB%A6%AC%EB%A0%8C%EB%8D%94%EB%A7%81-%EB%A7%89%EA%B3%A0-%EC%8B%B6%EC%96%B4%EC%9A%94....feat-%EC%82%AC%EC%9A%A9%EC%9E%90-%EC%BB%B4%ED%8F%AC%EB%84%8C%ED%8A%B8%EB%8A%94-%EB%AC%B4%EC%A1%B0%EA%B1%B4-%EB%8C%80%EB%AC%B8%EC%9E%90%EB%A1%9C
